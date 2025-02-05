@@ -17,6 +17,7 @@ import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
+import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 
@@ -74,17 +75,18 @@ public class ClawSubsystem extends SubsystemBase {
     public void setManualDirection(WristManualDirection desiredManualDirection) {
         m_manualWristDirection = desiredManualDirection;
     }
-    // private double m_manualWristPosition = 0;
-    // private void setManualWristPosition(double newValue) {
-    //     if (newValue < 0)
-    //         newValue = 0;
-    //     if (newValue > ClawConstants.WRIST_MAX_POSITION)
-    //         newValue = ClawConstants.WRIST_MAX_POSITION;
-    //     m_manualWristPosition = newValue;
-    // }
-    // public void incrementManualWristPosition(double value) {
-    //     setManualWristPosition(m_manualWristPosition + value);
-    // }
+    private double m_manualWristPosition = 0;
+    private void setManualWristPosition(double newValue) {
+        if (newValue < ClawConstants.WRIST_MIN_POSITION)
+            newValue = ClawConstants.WRIST_MIN_POSITION;
+        if (newValue > ClawConstants.WRIST_MAX_POSITION)
+            newValue = ClawConstants.WRIST_MAX_POSITION;
+        m_manualWristPosition = newValue;
+    }
+    public void incrementManualWristPosition(double value) {
+        setManualWristPosition(m_manualWristPosition + value);
+    }
+    private final DoublePublisher m_manualWristPositionPublisher = RobotState.m_robotStateTable.getDoubleTopic("WristManualTargetPosition").publish();
 
     private final TalonFX m_intakeMotor = new TalonFX(ClawConstants.INTAKE_MOTOR_ID, Constants.CANIVORE_NAME);
     private final TalonFX m_wristMotor = new TalonFX(ClawConstants.WRIST_MOTOR_ID, Constants.CANIVORE_NAME);
@@ -126,12 +128,19 @@ public class ClawSubsystem extends SubsystemBase {
 
         // FIXME: tune wrist PID
         TalonFXConfiguration wristConfig = new TalonFXConfiguration();
-        wristConfig.Slot0.kP = 2.4; // An error of 1 rotation results in 2.4 V output
-        wristConfig.Slot0.kI = 0; // No output for integrated error
-        wristConfig.Slot0.kD = 0.1; // A velocity of 1 rps results in 0.1 V output
-        // Peak output of 8 V
-        wristConfig.Voltage.withPeakForwardVoltage(Volts.of(10))
-            .withPeakReverseVoltage(Volts.of(-10));
+        // wristConfig.Slot0.kP = 2.4; // An error of 1 rotation results in 2.4 V output
+        // wristConfig.Slot0.kI = 0; // No output for integrated error
+        // wristConfig.Slot0.kD = 0.1; // A velocity of 1 rps results in 0.1 V output
+
+        // wristConfig.Slot0.kG = 0.1589; // position 0.489
+        // wristConfig.Slot0.kG = 0.95; // position 0.3
+        // wristConfig.Slot0.kV = 1.2;
+        wristConfig.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
+        wristConfig.Slot0.kP = 6;
+        wristConfig.Slot0.kI = 0.18;
+
+        // wristConfig.Voltage.withPeakForwardVoltage(Volts.of(10))
+        //     .withPeakReverseVoltage(Volts.of(-10));
 
         wristConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 
@@ -143,9 +152,10 @@ public class ClawSubsystem extends SubsystemBase {
         // FIXME: tune wrist Motion Magic
         // set Motion Magic settings
         var motionMagicConfigs = wristConfig.MotionMagic;
-        motionMagicConfigs.MotionMagicCruiseVelocity = 80; // rps
-        motionMagicConfigs.MotionMagicAcceleration = 160; // rps/s
-        motionMagicConfigs.MotionMagicJerk = 1600; // rps/s/s
+        final double velo = 30;
+        motionMagicConfigs.MotionMagicCruiseVelocity = velo; // rps
+        motionMagicConfigs.MotionMagicAcceleration = velo * 2; // rps/s
+        motionMagicConfigs.MotionMagicJerk = (velo * 2) * 10; // rps/s/s
 
         OurUtils.tryApplyConfig(m_wristMotor, wristConfig);
 
@@ -185,6 +195,8 @@ public class ClawSubsystem extends SubsystemBase {
             handleWristAutomatic();
         else
             handleWristManual();
+
+        m_manualWristPositionPublisher.set(m_manualWristPosition);
 
         m_wristMotorPosition.refresh();
         double wristMotorPosition = m_wristMotorPosition.getValueAsDouble();
@@ -252,27 +264,36 @@ public class ClawSubsystem extends SubsystemBase {
         m_wristMotor.setControl(wristRequest);
     }
     public void handleWristManual() {
-        // ControlRequest desiredControl = m_brake;
-        double speed = 0;
-        final double targetSpeed = 0.15;
+        ControlRequest desiredControl = m_brake;
+
+        // switch (m_manualWristDirection) {
+        //     case NONE:
+        //         desiredControl = m_brake; // redundant?
+        //         break;
+        //     case OUT:
+        //         desiredControl = m_wristVelocityControl.withVelocity(ClawConstants.MANUAL_WRIST_VELOCITY_FORWARD_RPS);
+        //         break;
+        //     case IN:
+        //         desiredControl = m_wristVelocityControl.withVelocity(ClawConstants.MANUAL_WRIST_VELOCITY_BACKWARD_RPS);
+        //         break;
+        // }
+
+        final double increment = 1;
 
         switch (m_manualWristDirection) {
             case NONE:
-                // desiredControl = m_brake; // redundant?
                 break;
             case OUT:
-                // desiredControl = m_wristVelocityControl.withVelocity(ClawConstants.MANUAL_WRIST_VELOCITY_FORWARD_RPS);
-                // desiredControl = m_wristPositionControl.withPosition(m_manualWristPosition);
-                speed = targetSpeed;
+                incrementManualWristPosition(increment);
                 break;
             case IN:
-                // desiredControl = m_wristVelocityControl.withVelocity(ClawConstants.MANUAL_WRIST_VELOCITY_BACKWARD_RPS);
-                // desiredControl = m_wristPositionControl.withPosition(m_manualWristPosition);
-                speed = -targetSpeed;
+                incrementManualWristPosition(-increment);
                 break;
         }
 
-        m_wristMotor.set(speed);
+        desiredControl = m_wristPositionControl.withPosition(m_manualWristPosition / 360);
+
+        m_wristMotor.setControl(desiredControl);
     }
 
     private Command makeCommand(boolean isForward) {

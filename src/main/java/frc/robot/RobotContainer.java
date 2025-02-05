@@ -151,4 +151,8 @@ public class RobotContainer {
     public Command getAutonomousCommand() {
         return m_autoChooser.getSelected();
     }
+
+    public void teleopInit() {
+        m_elevatorSubsystem.resetManualPosition();
+    }
 }

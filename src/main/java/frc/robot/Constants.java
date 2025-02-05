@@ -19,6 +19,9 @@ public class Constants {
         public static final int LEADER_MOTOR_ID = 17; // left
         public static final int FOLLOWER_MOTOR_ID = 12; // right
 
+        public static final double MIN_POSITION_ROTATIONS = 0.01; // essentially the error, since ideal min position is 0
+        public static final double MAX_POSITION_ROTATIONS = 0.5;
+
         // TODO: ideally, home and coral station are the same
         // FIXME: ELEVATOR HOME POSITION
         public static final double HOME_POSITION = 0;
@@ -60,7 +63,8 @@ public class Constants {
         // FIXME: CLAW WRIST L4 POSITION
         public static final double WRIST_L4_POSITION = WRIST_CORAL_STATION_POSITION;
 
-        public static final double WRIST_MAX_POSITION = 130;
+        public static final double WRIST_MIN_POSITION = 1; // ideally 0
+        public static final double WRIST_MAX_POSITION = 160;
 
         // FIXME: WRIST MANUAL VELOCITY
         public static final double MANUAL_WRIST_VELOCITY_FORWARD_RPS = 3;

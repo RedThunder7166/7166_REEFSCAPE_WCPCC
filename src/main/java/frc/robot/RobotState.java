@@ -19,7 +19,7 @@ public final class RobotState {
     // }
 
     private static final boolean ENABLE_AUTOMATIC_CONTROL = true;
-    public static boolean ENABLE_AUTOMATIC_CLAW_CONTROL = true;
+    public static boolean ENABLE_AUTOMATIC_CLAW_CONTROL = false;
     public static boolean ENABLE_AUTOMATIC_ELEVATOR_CONTROL = false;
     static {
         if (!ENABLE_AUTOMATIC_CONTROL) {

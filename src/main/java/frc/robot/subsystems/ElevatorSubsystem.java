@@ -20,6 +20,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ElevatorConstants;
@@ -77,6 +78,22 @@ public class ElevatorSubsystem extends SubsystemBase {
         m_manualDirection = desiredManualDirection;
     }
 
+    private double m_manualPosition = 0;
+    private void setManualPosition(double newValue) {
+        if (newValue < ElevatorConstants.MIN_POSITION_ROTATIONS)
+            newValue = ElevatorConstants.MIN_POSITION_ROTATIONS;
+        if (newValue > ElevatorConstants.MAX_POSITION_ROTATIONS)
+            newValue = ElevatorConstants.MAX_POSITION_ROTATIONS;
+        m_manualPosition = newValue;
+    }
+    public void incrementManualPosition(double value) {
+        setManualPosition(m_manualPosition + value);
+    }
+    public void resetManualPosition() {
+        setManualPosition(0);
+    }
+    private final DoublePublisher m_manualPositionPublisher = RobotState.m_robotStateTable.getDoubleTopic("ElevatorManualTargetPosition").publish();
+
     private final TalonFX m_leaderMotor = new TalonFX(ElevatorConstants.LEADER_MOTOR_ID, Constants.CANIVORE_NAME);
     private final TalonFX m_followerMotor = new TalonFX(ElevatorConstants.FOLLOWER_MOTOR_ID, Constants.CANIVORE_NAME);
 
@@ -128,7 +145,7 @@ public class ElevatorSubsystem extends SubsystemBase {
         m_followerMotor.setPosition(0);
     }
 
-    // TODO: this should be temporary
+    // TODO: this should be private and only be called on sensor trip
     public void resetMotorPositions() {
         m_leaderMotor.setPosition(0);
         m_followerMotor.setPosition(0);
@@ -151,6 +168,9 @@ public class ElevatorSubsystem extends SubsystemBase {
             handleAutomatic();
         else
             handleManual();
+            // DriverStation.reportWarning("ELEVATOR MANUAL MODE NOT ACTIVATING SINCE IT DOES NOT WORK; TUNE THE PID!!!", false); // this is if we use velocity control :skull:
+
+        m_manualPositionPublisher.set(m_manualPosition);
 
         m_leaderMotorPosition.refresh();
         m_followerMotorPosition.refresh();
@@ -236,20 +256,35 @@ public class ElevatorSubsystem extends SubsystemBase {
         m_leaderMotor.setControl(desiredControl);
     }
     private void handleManual() {
-        ControlRequest desiredControl = m_brake;
+        // ControlRequest desiredControl = m_brake;
+
+        // switch (m_manualDirection) {
+        //     case NONE:
+        //         desiredControl = m_brake; // redundant?
+        //         break;
+        //     case UP:
+        //         desiredControl = m_velocityControl.withVelocity(ElevatorConstants.MANUAL_VELOCITY_FORWARD_RPS);
+        //         break;
+        //     case DOWN:
+        //         desiredControl = m_velocityControl.withVelocity(ElevatorConstants.MANUAL_VELOCITY_BACKWARD_RPS);
+        //         break;
+        // }
+
+        // m_leaderMotor.setControl(desiredControl);
+
+        final double increment = 0.005;
 
         switch (m_manualDirection) {
             case NONE:
-                desiredControl = m_brake; // redundant?
                 break;
             case UP:
-                desiredControl = m_velocityControl.withVelocity(ElevatorConstants.MANUAL_VELOCITY_FORWARD_RPS);
+                incrementManualPosition(increment);
                 break;
             case DOWN:
-                desiredControl = m_velocityControl.withVelocity(ElevatorConstants.MANUAL_VELOCITY_BACKWARD_RPS);
+                incrementManualPosition(-increment);
                 break;
         }
 
-        m_leaderMotor.setControl(desiredControl);
+        m_leaderMotor.setControl(m_positionControl.withPosition(m_manualPosition));
     }
 }
