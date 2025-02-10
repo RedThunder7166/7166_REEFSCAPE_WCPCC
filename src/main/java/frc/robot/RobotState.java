@@ -8,6 +8,7 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
 import frc.robot.subsystems.CameraSubsystem;
+import frc.robot.subsystems.ClawSubsystem;
 
 public final class RobotState {
     // private static RobotState singleton = null;
@@ -20,7 +21,7 @@ public final class RobotState {
 
     private static final boolean ENABLE_AUTOMATIC_CONTROL = true;
     public static boolean ENABLE_AUTOMATIC_CLAW_CONTROL = false;
-    public static boolean ENABLE_AUTOMATIC_ELEVATOR_CONTROL = false;
+    public static boolean ENABLE_AUTOMATIC_ELEVATOR_CONTROL = true;
     static {
         if (!ENABLE_AUTOMATIC_CONTROL) {
             ENABLE_AUTOMATIC_CLAW_CONTROL = false;
@@ -58,6 +59,11 @@ public final class RobotState {
         return true;
     }
 
+    public static enum DESIRED_CONTROL_TYPE {
+        AUTOMATIC,
+        MANUAL
+    }
+
     public static enum INTAKE_STATE {
         IDLE,
         OUT,
@@ -81,7 +87,13 @@ public final class RobotState {
     private static CameraSubsystem m_cameraSubsystem = CameraSubsystem.getSingleton();
     public static boolean getCanMoveScoringMechanisms() {
         // TODO: sensor logic
-        return m_cameraSubsystem.getRobotInsideReefZone();
+        // return m_cameraSubsystem.getRobotInsideReefZone();
+        return true;
+    }
+
+    private static ClawSubsystem m_clawSubsystem = ClawSubsystem.getSingleton();
+    public static boolean getWristHasElevatorClearance() {
+        return m_clawSubsystem.getWristHasElevatorClearance();
     }
 
     public static void updateNetworkTables() {

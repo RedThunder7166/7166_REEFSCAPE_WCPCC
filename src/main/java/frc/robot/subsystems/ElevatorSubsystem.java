@@ -27,6 +27,7 @@ import frc.robot.Constants.ElevatorConstants;
 import frc.robot.Constants;
 import frc.robot.OurUtils;
 import frc.robot.RobotState;
+import frc.robot.RobotState.DESIRED_CONTROL_TYPE;
 
 public class ElevatorSubsystem extends SubsystemBase {
     private static ElevatorSubsystem singleton = null;
@@ -66,6 +67,7 @@ public class ElevatorSubsystem extends SubsystemBase {
     private void setAutomaticPosition(ElevatorPosition desiredPosition) {
         m_position = desiredPosition;
     }
+    private final DoublePublisher m_automaticPositionRotationsPublisher = RobotState.m_robotStateTable.getDoubleTopic("ElevatorAutomaticPositionRotations").publish();
 
     public static enum ElevatorManualDirection {
         NONE,
@@ -84,6 +86,10 @@ public class ElevatorSubsystem extends SubsystemBase {
             newValue = ElevatorConstants.MIN_POSITION_ROTATIONS;
         if (newValue > ElevatorConstants.MAX_POSITION_ROTATIONS)
             newValue = ElevatorConstants.MAX_POSITION_ROTATIONS;
+
+        // if (!RobotState.getWristHasElevatorClearance() && newValue > ElevatorConstants.MAX_TARGET_POSITION_WITH_WRIST)
+        //     newValue = ElevatorConstants.MAX_TARGET_POSITION_WITH_WRIST;
+
         m_manualPosition = newValue;
     }
     public void incrementManualPosition(double value) {
@@ -107,22 +113,29 @@ public class ElevatorSubsystem extends SubsystemBase {
     private final DoublePublisher m_leaderMotorPositionPublisher = RobotState.m_robotStateTable.getDoubleTopic("ElevatorLeaderMotorPosition").publish();
     private final DoublePublisher m_followerMotorPositionPublisher = RobotState.m_robotStateTable.getDoubleTopic("ElevatorFollowerMotorPosition").publish();
 
+    private DESIRED_CONTROL_TYPE m_desiredControlType = DESIRED_CONTROL_TYPE.AUTOMATIC;
+    public void setDesiredControlType(DESIRED_CONTROL_TYPE desiredControlType) {
+        m_desiredControlType = desiredControlType;
+    }
+    public DESIRED_CONTROL_TYPE getDesiredControlType() {
+        return m_desiredControlType;
+    }
+
     public ElevatorSubsystem() {
         // FIXME: tune elevator PID
         TalonFXConfiguration motorConfig = new TalonFXConfiguration();
-        motorConfig.Slot0.kG = 0.38;
-        motorConfig.Slot0.kV = 5.91;
-        motorConfig.Slot0.kA = 0.03;
+        motorConfig.Slot0.kG = 0.27;
+        // motorConfig.Slot0.kV = 5.91;
+        motorConfig.Slot0.kV = 0.05;
+        motorConfig.Slot0.kA = 0.0025;
         motorConfig.Slot0.GravityType = GravityTypeValue.Elevator_Static;
-        // motorConfig.Slot0.kP = 0.5;
+        motorConfig.Slot0.kP = 7;
         // motorConfig.Slot0.kI = 0;
         // motorConfig.Slot0.kD = 0;
-        // motorConfig.Slot0.kV = 5.91;
-        // motorConfig.Slot0.kA = 0.03;
 
-        // Peak output of 8 V
-        motorConfig.Voltage.withPeakForwardVoltage(Volts.of(8))
-            .withPeakReverseVoltage(Volts.of(-8));
+        // TODO: once tuned, find peak voltage and set
+        // motorConfig.Voltage.withPeakForwardVoltage(Volts.of(8))
+        //     .withPeakReverseVoltage(Volts.of(-8));
 
         motorConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 
@@ -132,9 +145,10 @@ public class ElevatorSubsystem extends SubsystemBase {
         // FIXME: tune elevator Motion Magic; may be different per motor?
         // set Motion Magic settings
         var motionMagicConfigs = motorConfig.MotionMagic;
-        motionMagicConfigs.MotionMagicCruiseVelocity = 0.3; // rps
-        motionMagicConfigs.MotionMagicAcceleration = 0.3; // rps/s
-        motionMagicConfigs.MotionMagicJerk = 1; // rps/s/s
+        final double velo = 20;
+        motionMagicConfigs.MotionMagicCruiseVelocity = velo; // rps
+        motionMagicConfigs.MotionMagicAcceleration = velo * 2; // rps/s
+        motionMagicConfigs.MotionMagicJerk = (velo * 2) * 10; // rps/s/s
 
         OurUtils.tryApplyConfig(m_leaderMotor, motorConfig);
         OurUtils.tryApplyConfig(m_followerMotor, motorConfig);
@@ -153,6 +167,7 @@ public class ElevatorSubsystem extends SubsystemBase {
 
     private Command makeManualCommand(ElevatorManualDirection desiredDirection) {
         return startEnd(() -> {
+            setDesiredControlType(DESIRED_CONTROL_TYPE.MANUAL);
             setManualDirection(desiredDirection);
         }, () -> {
             setAutomaticState(ElevatorState.IDLE);
@@ -164,7 +179,7 @@ public class ElevatorSubsystem extends SubsystemBase {
 
     @Override
     public void periodic() {
-        if (RobotState.ENABLE_AUTOMATIC_ELEVATOR_CONTROL && m_manualDirection == ElevatorManualDirection.NONE)
+        if (RobotState.ENABLE_AUTOMATIC_ELEVATOR_CONTROL && m_desiredControlType == DESIRED_CONTROL_TYPE.AUTOMATIC)
             handleAutomatic();
         else
             handleManual();
@@ -253,6 +268,9 @@ public class ElevatorSubsystem extends SubsystemBase {
                 break;
         }
 
+        if (desiredControl instanceof MotionMagicVoltage)
+            m_automaticPositionRotationsPublisher.set(((MotionMagicVoltage) desiredControl).Position);
+
         m_leaderMotor.setControl(desiredControl);
     }
     private void handleManual() {
@@ -272,10 +290,11 @@ public class ElevatorSubsystem extends SubsystemBase {
 
         // m_leaderMotor.setControl(desiredControl);
 
-        final double increment = 0.005;
+        final double increment = 0.1;
 
         switch (m_manualDirection) {
             case NONE:
+                setManualPosition(m_manualPosition); // we ensure this method is called for wrist clearance
                 break;
             case UP:
                 incrementManualPosition(increment);

@@ -18,6 +18,7 @@ import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
 import com.ctre.phoenix6.signals.GravityTypeValue;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 
@@ -30,6 +31,7 @@ import frc.robot.Constants.ClawConstants;
 import frc.robot.Constants;
 import frc.robot.OurUtils;
 import frc.robot.RobotState;
+import frc.robot.RobotState.DESIRED_CONTROL_TYPE;
 
 public class ClawSubsystem extends SubsystemBase {
     private static ClawSubsystem singleton = null;
@@ -86,6 +88,9 @@ public class ClawSubsystem extends SubsystemBase {
     public void incrementManualWristPosition(double value) {
         setManualWristPosition(m_manualWristPosition + value);
     }
+    public void resetManualWristPosition() {
+        setManualWristPosition(0);
+    }
     private final DoublePublisher m_manualWristPositionPublisher = RobotState.m_robotStateTable.getDoubleTopic("WristManualTargetPosition").publish();
 
     private final TalonFX m_intakeMotor = new TalonFX(ClawConstants.INTAKE_MOTOR_ID, Constants.CANIVORE_NAME);
@@ -97,10 +102,20 @@ public class ClawSubsystem extends SubsystemBase {
     private final VelocityVoltage m_wristVelocityControl = new VelocityVoltage(0).withSlot(0);
     private final NeutralOut m_brake = new NeutralOut();
 
-    private final StatusSignal<Angle> m_wristMotorPosition = m_wristMotor.getPosition();
+    private final StatusSignal<Angle> m_wristMotorPositionSignal = m_wristMotor.getPosition();
+    private double m_wristMotorPositionRotations;
+    private double m_wristMotorPositionDegrees;
 
     private final DoublePublisher m_wristMotorPositionPublisher = RobotState.m_robotStateTable.getDoubleTopic("WristMotorPosition").publish();
     private final DoublePublisher m_wristMotorPositionDegreesPublisher = RobotState.m_robotStateTable.getDoubleTopic("WristMotorPositionDegrees").publish();
+
+    private DESIRED_CONTROL_TYPE m_desiredControlType = DESIRED_CONTROL_TYPE.AUTOMATIC;
+    public void setDesiredControlType(DESIRED_CONTROL_TYPE desiredControlType) {
+        m_desiredControlType = desiredControlType;
+    }
+    public DESIRED_CONTROL_TYPE getDesiredControlType() {
+        return m_desiredControlType;
+    }
 
     public ClawSubsystem() {
         // FIXME: tune intake PID
@@ -121,27 +136,24 @@ public class ClawSubsystem extends SubsystemBase {
         // FIXME: config wrist CANcoder
         CANcoderConfiguration encoderConfig = new CANcoderConfiguration();
         encoderConfig.MagnetSensor.withAbsoluteSensorDiscontinuityPoint(Rotations.of(0.5));
-        encoderConfig.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
+        encoderConfig.MagnetSensor.SensorDirection = SensorDirectionValue.CounterClockwise_Positive;
         encoderConfig.MagnetSensor.withMagnetOffset(Rotations.of(0));
 
         OurUtils.tryApplyConfig(m_wristEncoder, encoderConfig);
 
         // FIXME: tune wrist PID
         TalonFXConfiguration wristConfig = new TalonFXConfiguration();
-        // wristConfig.Slot0.kP = 2.4; // An error of 1 rotation results in 2.4 V output
-        // wristConfig.Slot0.kI = 0; // No output for integrated error
-        // wristConfig.Slot0.kD = 0.1; // A velocity of 1 rps results in 0.1 V output
-
-        // wristConfig.Slot0.kG = 0.1589; // position 0.489
-        // wristConfig.Slot0.kG = 0.95; // position 0.3
-        // wristConfig.Slot0.kV = 1.2;
         wristConfig.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
-        wristConfig.Slot0.kP = 6;
-        wristConfig.Slot0.kI = 0.18;
+        // wristConfig.Slot0.kP = 6;
+        // wristConfig.Slot0.kI = 0.18;
+
+        wristConfig.Slot0.kG = -3.0602;
+        wristConfig.Slot0.kS = 0.032;
 
         // wristConfig.Voltage.withPeakForwardVoltage(Volts.of(10))
         //     .withPeakReverseVoltage(Volts.of(-10));
 
+        wristConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         wristConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 
         wristConfig.Feedback.FeedbackRemoteSensorID = m_wristEncoder.getDeviceID();
@@ -152,7 +164,7 @@ public class ClawSubsystem extends SubsystemBase {
         // FIXME: tune wrist Motion Magic
         // set Motion Magic settings
         var motionMagicConfigs = wristConfig.MotionMagic;
-        final double velo = 30;
+        final double velo = 8;
         motionMagicConfigs.MotionMagicCruiseVelocity = velo; // rps
         motionMagicConfigs.MotionMagicAcceleration = velo * 2; // rps/s
         motionMagicConfigs.MotionMagicJerk = (velo * 2) * 10; // rps/s/s
@@ -194,17 +206,24 @@ public class ClawSubsystem extends SubsystemBase {
         if (RobotState.ENABLE_AUTOMATIC_CLAW_CONTROL && m_manualWristDirection == WristManualDirection.NONE)
             handleWristAutomatic();
         else
-            handleWristManual();
+            // handleWristManual();
+            ;
 
         m_manualWristPositionPublisher.set(m_manualWristPosition);
 
-        m_wristMotorPosition.refresh();
-        double wristMotorPosition = m_wristMotorPosition.getValueAsDouble();
-        m_wristMotorPositionPublisher.set(wristMotorPosition);
-        m_wristMotorPositionDegreesPublisher.set(wristMotorPosition * 360);
+        m_wristMotorPositionSignal.refresh();
+        m_wristMotorPositionRotations = m_wristMotorPositionSignal.getValueAsDouble();
+        m_wristMotorPositionDegrees = m_wristMotorPositionRotations * 360;
+
+        m_wristMotorPositionPublisher.set(m_wristMotorPositionRotations);
+        m_wristMotorPositionDegreesPublisher.set(m_wristMotorPositionDegrees);
 
         m_wristManualDirectionPublisher.set(m_manualWristDirection.toString());
         m_wristPositionPublisher.set(m_wristPosition.toString());
+    }
+
+    public boolean getWristHasElevatorClearance() {
+        return m_wristMotorPositionDegrees >= ClawConstants.WRIST_ELEVATOR_CLEARANCE_THRESHOLD;
     }
 
     public void handleWristAutomatic() {

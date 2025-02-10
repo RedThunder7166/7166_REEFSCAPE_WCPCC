@@ -15,6 +15,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import frc.robot.RobotState.DESIRED_CONTROL_TYPE;
 import frc.robot.RobotState.RELATIVE_SCORE_POSITION;
 import frc.robot.controls.DRIVER_CONTROLS;
 import frc.robot.controls.OPERATOR_CONTROLS;
@@ -48,12 +49,21 @@ public class RobotContainer {
     private final ClawSubsystem m_clawSubsystem = ClawSubsystem.getSingleton();
 
     private InstantCommand makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION desiredPosition, ElevatorState desiredElevatorState, ClawState desiredClawState) {
+        // return new InstantCommand(() -> {
+        //     RobotState.setTargetScorePosition(desiredPosition);
+        //     m_elevatorSubsystem.setDesiredControlType(DESIRED_CONTROL_TYPE.AUTOMATIC);
+        //     m_clawSubsystem.setDesiredControlType(DESIRED_CONTROL_TYPE.AUTOMATIC);
+
+        //     m_elevatorSubsystem.setAutomaticState(desiredElevatorState);
+        //     m_clawSubsystem.setAutomaticState(desiredClawState);
+        // }, m_elevatorSubsystem, m_clawSubsystem);
+        // TODO: put above back
         return new InstantCommand(() -> {
             RobotState.setTargetScorePosition(desiredPosition);
+            m_elevatorSubsystem.setDesiredControlType(DESIRED_CONTROL_TYPE.AUTOMATIC);
 
             m_elevatorSubsystem.setAutomaticState(desiredElevatorState);
-            m_clawSubsystem.setAutomaticState(desiredClawState);
-        }, m_elevatorSubsystem, m_clawSubsystem);
+        }, m_elevatorSubsystem);
     }
     public final InstantCommand positionCoralStation;
     public final InstantCommand setTargetScorePosition_NONE;
@@ -153,6 +163,10 @@ public class RobotContainer {
     }
 
     public void teleopInit() {
+        RobotState.setTargetScorePosition(RELATIVE_SCORE_POSITION.NONE);
+
         m_elevatorSubsystem.resetManualPosition();
+        m_elevatorSubsystem.resetMotorPositions();
+        m_clawSubsystem.resetManualWristPosition();
     }
 }
