@@ -10,10 +10,13 @@ import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import frc.robot.RobotState.DESIRED_CONTROL_TYPE;
 import frc.robot.RobotState.RELATIVE_SCORE_POSITION;
@@ -79,6 +82,7 @@ public class RobotContainer {
     private final SendableChooser<Command> m_autoChooser;
 
     public RobotContainer() {
+        DriverStation.silenceJoystickConnectionWarning(true);
         m_autoChooser = AutoBuilder.buildAutoChooser("thereisnoauto");
         SmartDashboard.putData("AutoChooser", m_autoChooser);
 
@@ -94,6 +98,9 @@ public class RobotContainer {
         setTargetScorePosition_L4_R = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L4_R, ElevatorState.SCORE, ClawState.SCORE);
 
         configureBindings();
+
+        NamedCommands.registerCommand("ScoreL4_R", setTargetScorePosition_L4_R);
+        NamedCommands.registerCommand("PositionCoralStation", positionCoralStation);
     }
 
     private void configureBindings() {
@@ -138,6 +145,11 @@ public class RobotContainer {
 
         OPERATOR_CONTROLS.INTAKE_OUT.whileTrue(m_clawSubsystem.m_outCommand);
         OPERATOR_CONTROLS.INTAKE_IN.whileTrue(m_clawSubsystem.m_inCommand);
+        OPERATOR_CONTROLS.INTAKE_SLOW.whileTrue(Commands.startEnd(() -> {
+            m_clawSubsystem.setSlowMode(true);
+        }, () -> {
+            m_clawSubsystem.setSlowMode(false);
+        }));
 
         OPERATOR_CONTROLS.POSITION_CORAL_STATION.onTrue(positionCoralStation);
 

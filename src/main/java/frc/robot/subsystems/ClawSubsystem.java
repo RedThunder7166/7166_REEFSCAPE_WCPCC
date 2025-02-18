@@ -26,6 +26,7 @@ import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ClawConstants;
 import frc.robot.Constants;
@@ -144,11 +145,11 @@ public class ClawSubsystem extends SubsystemBase {
         // FIXME: tune wrist PID
         TalonFXConfiguration wristConfig = new TalonFXConfiguration();
         wristConfig.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
-        // wristConfig.Slot0.kP = 6;
+        wristConfig.Slot0.kP = 8;
         // wristConfig.Slot0.kI = 0.18;
 
-        wristConfig.Slot0.kG = -3.0602;
-        wristConfig.Slot0.kS = 0.032;
+        wristConfig.Slot0.kG = -0.30602; // -0.56
+        wristConfig.Slot0.kV = 1;
 
         // wristConfig.Voltage.withPeakForwardVoltage(Volts.of(10))
         //     .withPeakReverseVoltage(Volts.of(-10));
@@ -164,10 +165,9 @@ public class ClawSubsystem extends SubsystemBase {
         // FIXME: tune wrist Motion Magic
         // set Motion Magic settings
         var motionMagicConfigs = wristConfig.MotionMagic;
-        final double velo = 8;
+        final double velo = 16; //8
         motionMagicConfigs.MotionMagicCruiseVelocity = velo; // rps
         motionMagicConfigs.MotionMagicAcceleration = velo * 2; // rps/s
-        motionMagicConfigs.MotionMagicJerk = (velo * 2) * 10; // rps/s/s
 
         OurUtils.tryApplyConfig(m_wristMotor, wristConfig);
 
@@ -185,6 +185,11 @@ public class ClawSubsystem extends SubsystemBase {
     public final Command m_manualWristOutCommand = makeWristManualCommand(WristManualDirection.OUT);
     public final Command m_manualWristInCommand = makeWristManualCommand(WristManualDirection.IN);
 
+    private double m_targetVelocity = ClawConstants.INTAKE_FORWARD_VELOCITY_RPS;
+    public void setSlowMode(boolean slowMode) {
+        m_targetVelocity = slowMode ? ClawConstants.INTAKE_FORWARD_SLOW_VELOCITY_RPS : ClawConstants.INTAKE_FORWARD_VELOCITY_RPS;
+    }
+
     @Override
     public void periodic() {
         m_statePublisher.set(m_state.toString());
@@ -195,10 +200,10 @@ public class ClawSubsystem extends SubsystemBase {
                 intakeRequest = m_brake; // redundant?
                 break;
             case OUT:
-                intakeRequest = m_intakeVelocityControl.withVelocity(ClawConstants.INTAKE_FORWARD_VELOCITY_RPS);
+                intakeRequest = m_intakeVelocityControl.withVelocity(m_targetVelocity);
                 break;
             case IN:
-                intakeRequest = m_intakeVelocityControl.withVelocity(ClawConstants.INTAKE_BACKWARD_VELOCITY_RPS);
+                intakeRequest = m_intakeVelocityControl.withVelocity(-m_targetVelocity);
                 break;
         }
         m_intakeMotor.setControl(intakeRequest);
@@ -206,8 +211,8 @@ public class ClawSubsystem extends SubsystemBase {
         if (RobotState.ENABLE_AUTOMATIC_CLAW_CONTROL && m_manualWristDirection == WristManualDirection.NONE)
             handleWristAutomatic();
         else
-            // handleWristManual();
-            ;
+            handleWristManual();
+            // ;
 
         m_manualWristPositionPublisher.set(m_manualWristPosition);
 
@@ -316,7 +321,7 @@ public class ClawSubsystem extends SubsystemBase {
     }
 
     private Command makeCommand(boolean isForward) {
-        return this.startEnd(() -> {
+        return Commands.startEnd(() -> {
             RobotState.startIntake(isForward);
         }, () -> {
             RobotState.stopIntake();

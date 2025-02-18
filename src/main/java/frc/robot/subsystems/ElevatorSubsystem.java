@@ -183,7 +183,6 @@ public class ElevatorSubsystem extends SubsystemBase {
             handleAutomatic();
         else
             handleManual();
-            // DriverStation.reportWarning("ELEVATOR MANUAL MODE NOT ACTIVATING SINCE IT DOES NOT WORK; TUNE THE PID!!!", false); // this is if we use velocity control :skull:
 
         m_manualPositionPublisher.set(m_manualPosition);
 
