@@ -68,16 +68,16 @@ public class RobotContainer {
             m_elevatorSubsystem.setAutomaticState(desiredElevatorState);
         }, m_elevatorSubsystem);
     }
-    public final InstantCommand positionCoralStation;
-    public final InstantCommand setTargetScorePosition_NONE;
+    public final InstantCommand m_positionCoralStation;
+    public final InstantCommand m_setTargetScorePosition_NONE;
 
-    public final InstantCommand setTargetScorePosition_L1;
-    public final InstantCommand setTargetScorePosition_L2_L;
-    public final InstantCommand setTargetScorePosition_L2_R;
-    public final InstantCommand setTargetScorePosition_L3_L;
-    public final InstantCommand setTargetScorePosition_L3_R;
-    public final InstantCommand setTargetScorePosition_L4_L;
-    public final InstantCommand setTargetScorePosition_L4_R;
+    public final InstantCommand m_setTargetScorePosition_L1;
+    public final InstantCommand m_setTargetScorePosition_L2_L;
+    public final InstantCommand m_setTargetScorePosition_L2_R;
+    public final InstantCommand m_setTargetScorePosition_L3_L;
+    public final InstantCommand m_setTargetScorePosition_L3_R;
+    public final InstantCommand m_setTargetScorePosition_L4_L;
+    public final InstantCommand m_setTargetScorePosition_L4_R;
 
     private final SendableChooser<Command> m_autoChooser;
 
@@ -86,16 +86,16 @@ public class RobotContainer {
         m_autoChooser = AutoBuilder.buildAutoChooser("thereisnoauto");
         SmartDashboard.putData("AutoChooser", m_autoChooser);
 
-        positionCoralStation = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.NONE, ElevatorState.CORAL_STATION, ClawState.CORAL_STATION);
-        setTargetScorePosition_NONE = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.NONE, ElevatorState.IDLE, ClawState.IDLE);
+        m_positionCoralStation = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.NONE, ElevatorState.CORAL_STATION, ClawState.CORAL_STATION);
+        m_setTargetScorePosition_NONE = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.NONE, ElevatorState.IDLE, ClawState.IDLE);
 
-        setTargetScorePosition_L1 = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L1, ElevatorState.SCORE, ClawState.SCORE);
-        setTargetScorePosition_L2_L = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L2_L, ElevatorState.SCORE, ClawState.SCORE);
-        setTargetScorePosition_L2_R = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L2_R, ElevatorState.SCORE, ClawState.SCORE);
-        setTargetScorePosition_L3_L = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L3_L, ElevatorState.SCORE, ClawState.SCORE);
-        setTargetScorePosition_L3_R = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L3_R, ElevatorState.SCORE, ClawState.SCORE);
-        setTargetScorePosition_L4_L = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L4_L, ElevatorState.SCORE, ClawState.SCORE);
-        setTargetScorePosition_L4_R = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L4_R, ElevatorState.SCORE, ClawState.SCORE);
+        m_setTargetScorePosition_L1 = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L1, ElevatorState.SCORE, ClawState.SCORE);
+        m_setTargetScorePosition_L2_L = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L2_L, ElevatorState.SCORE, ClawState.SCORE);
+        m_setTargetScorePosition_L2_R = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L2_R, ElevatorState.SCORE, ClawState.SCORE);
+        m_setTargetScorePosition_L3_L = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L3_L, ElevatorState.SCORE, ClawState.SCORE);
+        m_setTargetScorePosition_L3_R = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L3_R, ElevatorState.SCORE, ClawState.SCORE);
+        m_setTargetScorePosition_L4_L = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L4_L, ElevatorState.SCORE, ClawState.SCORE);
+        m_setTargetScorePosition_L4_R = makeSetTargetScorePositionCommand(RELATIVE_SCORE_POSITION.L4_R, ElevatorState.SCORE, ClawState.SCORE);
 
         configureBindings();
 
@@ -151,15 +151,15 @@ public class RobotContainer {
             m_clawSubsystem.setSlowMode(false);
         }));
 
-        OPERATOR_CONTROLS.POSITION_CORAL_STATION.onTrue(positionCoralStation);
+        OPERATOR_CONTROLS.POSITION_CORAL_STATION.onTrue(m_positionCoralStation);
 
-        OPERATOR_CONTROLS.SCORE_L1.onTrue(setTargetScorePosition_L1);
-        OPERATOR_CONTROLS.SCORE_L2_L.onTrue(setTargetScorePosition_L2_L);
-        OPERATOR_CONTROLS.SCORE_L2_R.onTrue(setTargetScorePosition_L2_R);
-        OPERATOR_CONTROLS.SCORE_L3_L.onTrue(setTargetScorePosition_L3_L);
-        OPERATOR_CONTROLS.SCORE_L3_R.onTrue(setTargetScorePosition_L3_R);
-        OPERATOR_CONTROLS.SCORE_L4_L.onTrue(setTargetScorePosition_L4_L);
-        OPERATOR_CONTROLS.SCORE_L4_R.onTrue(setTargetScorePosition_L4_R);
+        OPERATOR_CONTROLS.SCORE_L1.onTrue(m_setTargetScorePosition_L1);
+        OPERATOR_CONTROLS.SCORE_L2_L.onTrue(m_setTargetScorePosition_L2_L);
+        OPERATOR_CONTROLS.SCORE_L2_R.onTrue(m_setTargetScorePosition_L2_R);
+        OPERATOR_CONTROLS.SCORE_L3_L.onTrue(m_setTargetScorePosition_L3_L);
+        OPERATOR_CONTROLS.SCORE_L3_R.onTrue(m_setTargetScorePosition_L3_R);
+        OPERATOR_CONTROLS.SCORE_L4_L.onTrue(m_setTargetScorePosition_L4_L);
+        OPERATOR_CONTROLS.SCORE_L4_R.onTrue(m_setTargetScorePosition_L4_R);
 
         OPERATOR_CONTROLS.ELEVATOR_MANUAL_UP.whileTrue(m_elevatorSubsystem.m_manualUpCommand);
         OPERATOR_CONTROLS.ELEVATOR_MANUAL_DOWN.whileTrue(m_elevatorSubsystem.m_manualDownCommand);

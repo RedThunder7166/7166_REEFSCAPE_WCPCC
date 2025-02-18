@@ -19,15 +19,9 @@ public final class RobotState {
     //     return singleton;
     // }
 
-    private static final boolean ENABLE_AUTOMATIC_CONTROL = true;
-    public static boolean ENABLE_AUTOMATIC_CLAW_CONTROL = false;
-    public static boolean ENABLE_AUTOMATIC_ELEVATOR_CONTROL = true;
-    static {
-        if (!ENABLE_AUTOMATIC_CONTROL) {
-            ENABLE_AUTOMATIC_CLAW_CONTROL = false;
-            ENABLE_AUTOMATIC_ELEVATOR_CONTROL = false;
-        }
-    }
+    // java optimizes these checks out :D
+    public static final boolean ENABLE_AUTOMATIC_ELEVATOR_CONTROL = true;
+    public static final boolean ENABLE_AUTOMATIC_CLAW_CONTROL = false;
 
     public static final NetworkTableInstance NETWORK_TABLE_INSTANCE = NetworkTableInstance.getDefault();
     public static final NetworkTable m_robotStateTable = NETWORK_TABLE_INSTANCE.getTable("RobotState");
